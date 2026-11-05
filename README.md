@@ -7,6 +7,7 @@
 </p>
 
 <p align="center">
+  <a href="https://github.com/mattiaferraioli00/laravel-docker-boilerplate/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/mattiaferraioli00/laravel-docker-boilerplate/actions/workflows/ci.yml/badge.svg"></a>
   <img alt="Laravel 13" src="https://img.shields.io/badge/Laravel-13-FF2D20?style=flat-square&logo=laravel&logoColor=white">
   <img alt="PHP 8.3 | 8.4 | 8.5" src="https://img.shields.io/badge/PHP-8.3%20%7C%208.4%20%7C%208.5-777BB4?style=flat-square&logo=php&logoColor=white">
   <img alt="MySQL 8.4" src="https://img.shields.io/badge/MySQL-8.4-4479A1?style=flat-square&logo=mysql&logoColor=white">

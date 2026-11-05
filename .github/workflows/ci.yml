@@ -1,0 +1,103 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Validate configuration
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: composer.json is valid JSON
+        run: python3 -m json.tool composer.json > /dev/null
+
+      - name: compose.yaml is valid
+        run: |
+          cp .env.example .env
+          docker compose config --quiet
+
+      - name: Shell scripts pass ShellCheck
+        run: |
+          command -v shellcheck > /dev/null || sudo apt-get install -y shellcheck
+          shellcheck --severity=warning scripts/sail/*.sh
+
+  boot:
+    name: Boot from a fresh clone (${{ matrix.name }})
+    needs: validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: all services
+            profiles: valkey,mailpit
+            store: redis
+            mailer: smtp
+          - name: app and MySQL only
+            profiles: ''
+            store: database
+            mailer: log
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: Create .env with the setup script
+        run: ./scripts/sail/setup.sh
+
+      - name: Select the services
+        env:
+          PROFILES: ${{ matrix.profiles }}
+          STORE: ${{ matrix.store }}
+          MAILER: ${{ matrix.mailer }}
+        run: |
+          sed -i \
+            -e "s|^COMPOSE_PROFILES=.*|COMPOSE_PROFILES=${PROFILES}|" \
+            -e "s|^CACHE_STORE=.*|CACHE_STORE=${STORE}|" \
+            -e "s|^QUEUE_CONNECTION=.*|QUEUE_CONNECTION=${STORE}|" \
+            -e "s|^MAIL_MAILER=.*|MAIL_MAILER=${MAILER}|" \
+            .env
+          grep -E '^(COMPOSE_PROFILES|CACHE_STORE|QUEUE_CONNECTION|MAIL_MAILER|WWWUSER|WWWGROUP)=' .env
+
+      - name: Start the containers
+        run: ./sail up -d --wait --wait-timeout 900
+
+      - name: Show the containers
+        if: always()
+        run: ./sail ps
+
+      - name: Run the migrations
+        run: ./sail artisan migrate --no-interaction
+
+      - name: The app answers on /up
+        run: curl -fsS -o /dev/null http://localhost:8080/up
+
+      - name: The testing database exists
+        run: ./sail exec -T mysql mysql -usail -ppassword -N -e "SHOW DATABASES" | grep -qx testing
+
+      - name: The cache store works
+        run: ./sail artisan tinker --execute='Cache::put("ci", "ok", 60); echo Cache::get("ci");' | grep -q ok
+
+      - name: Run the test suite
+        run: ./sail test
+
+      - name: Show the logs
+        if: failure()
+        run: ./sail logs
+
+      - name: Stop the containers
+        if: always()
+        run: ./sail down -v
