@@ -54,7 +54,6 @@
             "@php artisan package:discover --ansi"
         ],
         "post-update-cmd": [
-            "@php artisan vendor:publish --tag=laravel-assets --ansi --force",
             "@php -r \"copy('vendor/laravel/sail/bin/sail', 'sail'); chmod('sail', 0755);\""
         ],
         "post-root-package-install": [

@@ -5,7 +5,7 @@
 
 set -euo pipefail
 
-# Project root: two levels above scripts/docker/
+# Project root: two levels above scripts/sail/
 cd "$(dirname "$0")/../.."
 
 readonly ORIGINAL_ENV=".env.example"

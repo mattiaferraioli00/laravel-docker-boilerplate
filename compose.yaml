@@ -5,6 +5,9 @@ services:
             dockerfile: Dockerfile
             args:
                 WWWGROUP: '${WWWGROUP}'
+                NODE_VERSION: '${NODE_VERSION:-24}'
+                PHP_EXTENSIONS: '${PHP_EXTENSIONS:-}'
+                COMPOSER_VERSION: '${COMPOSER_VERSION:-}'
         extra_hosts:
             - 'host.docker.internal:host-gateway'
         ports:
@@ -39,7 +42,7 @@ services:
             start_period: 300s
             start_interval: 2s
     mysql:
-        image: 'mysql:8.4'
+        image: 'mysql:${MYSQL_VERSION:-8.4}'
         ports:
             - '${APP_BIND_ADDRESS:-127.0.0.1}:${FORWARD_DB_PORT:-}:3306'
         environment:
@@ -64,7 +67,7 @@ services:
             retries: 3
             timeout: 5s
     valkey:
-        image: 'valkey/valkey:alpine'
+        image: 'valkey/valkey:${VALKEY_VERSION:-9}-alpine'
         ports:
             - '${APP_BIND_ADDRESS:-127.0.0.1}:${FORWARD_VALKEY_PORT:-}:6379'
         volumes:
@@ -79,7 +82,7 @@ services:
             retries: 3
             timeout: 5s
     mailpit:
-        image: 'axllent/mailpit:latest'
+        image: 'axllent/mailpit:${MAILPIT_VERSION:-latest}'
         ports:
             - '${APP_BIND_ADDRESS:-127.0.0.1}:${FORWARD_MAILPIT_DASHBOARD_PORT:-8025}:8025'
         networks:

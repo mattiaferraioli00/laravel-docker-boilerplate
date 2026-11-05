@@ -7,6 +7,8 @@ ARG NODE_VERSION=24
 ARG MYSQL_CLIENT="mysql-client"
 ARG POSTGRES_VERSION=18
 ARG PHP_EXTENSIONS=""
+# boilerplate: COMPOSER_VERSION build argument (scripts/sail/publish.sh)
+ARG COMPOSER_VERSION=""
 
 WORKDIR /var/www/html
 
@@ -57,7 +59,7 @@ RUN apt-get update && apt-get upgrade -y \
         php8.4-pcov \
         php8.4-imagick \
         php8.4-xdebug \
-    && curl -sLS https://getcomposer.org/installer | php -- --install-dir=/usr/bin/ --filename=composer \
+    && curl -sLS https://getcomposer.org/installer | php -- --install-dir=/usr/bin/ --filename=composer ${COMPOSER_VERSION:+--version=$COMPOSER_VERSION} \
     && COMPOSER_HOME=/usr/local/share/composer composer global require cpx/cpx:^2.0 \
     && ln -s /usr/local/share/composer/vendor/bin/cpx /usr/local/bin/cpx \
     && curl -fsSL https://deb.nodesource.com/setup_$NODE_VERSION.x | bash - \
