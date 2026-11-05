@@ -2,8 +2,8 @@
 
 <p align="center">
   A <strong>configurable Laravel 13 boilerplate</strong> for local development with Docker and <strong>Laravel Sail</strong>.<br>
-  Pick PHP, Node, Composer, extensions, service versions and ports from a single <code>.env</code> file.<br>
-  MySQL, Valkey and Mailpit included. No PHP, Composer or Node on your machine: only Docker.
+  Pick PHP, Node, Composer, extensions, services, versions and ports from a single <code>.env</code> file.<br>
+  MySQL included, Valkey and Mailpit on demand. No PHP, Composer or Node on your machine: only Docker.
 </p>
 
 <p align="center">
@@ -61,7 +61,8 @@ NODE_VERSION=22
 COMPOSER_VERSION=2.8.4
 PHP_EXTENSIONS="gmp"
 
-# Services
+# Services: turn the optional ones on or off, pick their versions
+COMPOSE_PROFILES=valkey,mailpit
 MYSQL_VERSION=8.4
 VALKEY_VERSION=9
 
@@ -81,10 +82,11 @@ FORWARD_DB_PORT=3307
 | Node.js | `NODE_VERSION` | `24` |
 | Composer | `COMPOSER_VERSION` | latest |
 | Extra PHP extensions | `PHP_EXTENSIONS` | none |
-| MySQL, Valkey, Mailpit | `MYSQL_VERSION`, `VALKEY_VERSION`, `MAILPIT_VERSION` | `8.4`, `9`, `latest` |
+| Optional services | `COMPOSE_PROFILES` | `valkey,mailpit` (both on) |
+| MySQL, Valkey, Mailpit versions | `MYSQL_VERSION`, `VALKEY_VERSION`, `MAILPIT_VERSION` | `8.4`, `9`, `latest` |
 | Ports and bind address | `APP_PORT`, `VITE_PORT`, `FORWARD_*`, `APP_BIND_ADDRESS` | `8080`, `5173`, random, `127.0.0.1` |
 
-Leave a value empty and the boilerplate uses its default. Every variable is explained in [Configuration](#-configuration).
+Leave a value empty and the boilerplate uses its default (the one exception is `COMPOSE_PROFILES`, where empty means no optional service). Every variable is explained in [Configuration](#-configuration).
 
 ---
 
@@ -95,6 +97,7 @@ Leave a value empty and the boilerplate uses its default. Every variable is expl
 This template turns Sail into something you can clone and start in three commands:
 
 - **Configurable from one file.** PHP, Node, Composer, extensions, service versions and ports all come from `.env`, with sensible defaults when you leave them empty.
+- **Only the services you need.** Valkey and Mailpit are optional: an API that sends no email does not have to run a mail catcher.
 - **Nothing to install but Docker.** PHP, Composer, Node and every extension live inside the container.
 - **Builds from a fresh clone.** The Sail runtimes are published in `docker/`, so the image builds without `vendor/`.
 - **Dependencies install themselves.** `composer install` runs every time the app container starts.
@@ -113,10 +116,10 @@ This template turns Sail into something you can clone and start in three command
 |---|---|---|---|
 | `app` | built from `docker/<PHP_VERSION>` | PHP, Composer, Node, `php artisan serve` | http://localhost:8080 (Vite on `5173`) |
 | `mysql` | `mysql:8.4` | Application database, plus a `testing` database for the test suite | `127.0.0.1` on a random port, or `FORWARD_DB_PORT` |
-| `valkey` | `valkey/valkey:9-alpine` | Cache and queues through Laravel's `redis` driver | `127.0.0.1` on a random port, or `FORWARD_VALKEY_PORT` |
-| `mailpit` | `axllent/mailpit:latest` | Catches every email the app sends | http://localhost:8025 |
+| `valkey` *(optional)* | `valkey/valkey:9-alpine` | Cache and queues through Laravel's `redis` driver | `127.0.0.1` on a random port, or `FORWARD_VALKEY_PORT` |
+| `mailpit` *(optional)* | `axllent/mailpit:latest` | Catches every email the app sends | http://localhost:8025 |
 
-The `app` image is Sail's own runtime: Ubuntu 24.04 with PHP and the common extensions (MySQL, Redis, GD, Imagick, Intl, Swoole, Xdebug, PCOV, …), Composer, Node.js with npm, pnpm, Yarn and Bun, and the MySQL client.
+The app and MySQL always run; Valkey and Mailpit start only when listed in `COMPOSE_PROFILES` (both are on by default). The `app` image is Sail's own runtime: Ubuntu 24.04 with PHP and the common extensions (MySQL, Redis, GD, Imagick, Intl, Swoole, Xdebug, PCOV, …), Composer, Node.js with npm, pnpm, Yarn and Bun, and the MySQL client.
 
 ```mermaid
 flowchart LR
@@ -127,8 +130,8 @@ flowchart LR
     subgraph network["Docker network · sail"]
         app["app<br/>PHP · artisan serve · Composer · Node"]
         mysql[("mysql<br/>MySQL 8.4")]
-        valkey[("valkey<br/>Valkey 9")]
-        mailpit["mailpit<br/>SMTP + web UI"]
+        valkey[("valkey · optional<br/>Valkey 9")]
+        mailpit["mailpit · optional<br/>SMTP + web UI"]
     end
     browser -- ":8080 app / :5173 Vite" --> app
     browser -- ":8025" --> mailpit
@@ -277,7 +280,7 @@ Every port is bound to `127.0.0.1` (`APP_BIND_ADDRESS`), so nothing is reachable
 | `./sail shell` | Open a shell in the app container as your user |
 | `./sail root-shell` | Open a root shell in the app container |
 | `./sail mysql` | Open the MySQL client on the application database |
-| `./sail valkey` | Open `valkey-cli` |
+| `./sail valkey` | Open `valkey-cli` (when Valkey is on) |
 | `./sail port mysql 3306` | Show the host port of a service |
 
 > [!NOTE]
@@ -292,7 +295,7 @@ All settings live in `.env`. The file is split in two parts that behave differen
 | Part | An empty value means |
 |---|---|
 | **Laravel** (top of the file) | An empty string. To use Laravel's config default, comment the line out instead. |
-| **Docker / Sail** (bottom of the file) | The default written in `compose.yaml` (`${VAR:-default}`) |
+| **Docker / Sail** (bottom of the file) | The default written in `compose.yaml` (`${VAR:-default}`). Exception: an empty `COMPOSE_PROFILES` starts no optional service |
 
 ### Docker / Sail variables
 
@@ -310,6 +313,7 @@ All settings live in `.env`. The file is split in two parts that behave differen
 | `NODE_VERSION` | `24` | ✔ | Node.js major version |
 | `COMPOSER_VERSION` | latest | ✔ | Exact Composer version, e.g. `2.8.4` |
 | `PHP_EXTENSIONS` | none | ✔ | Extra extensions, space separated, e.g. `"gmp apcu"` |
+| `COMPOSE_PROFILES` | `valkey,mailpit` | | Optional services to start, comma separated. The app and MySQL always run |
 | `MYSQL_VERSION` | `8.4` | | MySQL image tag |
 | `VALKEY_VERSION` | `9` | | Valkey image tag (`<version>-alpine`) |
 | `MAILPIT_VERSION` | `latest` | | Mailpit image tag |
@@ -352,6 +356,42 @@ sed -i 's|^PHP_EXTENSIONS=.*|PHP_EXTENSIONS="gmp apcu"|' .env
 ```
 
 Many common extensions are already in the image: check `./sail php -m` before adding one.
+
+</details>
+
+<details>
+<summary><strong>Turn services on and off</strong></summary>
+
+Valkey and Mailpit are [Compose profiles](https://docs.docker.com/compose/how-tos/profiles/): a service starts only when its name is in `COMPOSE_PROFILES`. The app does not wait for a service that is off.
+
+Stop the containers **before** changing the value, so Compose also removes the service you are turning off:
+
+```bash
+./sail down
+```
+
+Then edit `.env`. For example, an API without email:
+
+```dotenv
+COMPOSE_PROFILES=valkey
+MAIL_MAILER=log
+```
+
+and start again:
+
+```bash
+./sail up -d --wait
+./sail ps
+```
+
+Laravel does not know which services are running, so update the settings that use the one you turn off:
+
+| Turned off | Change in `.env` | Result |
+|---|---|---|
+| `valkey` | `CACHE_STORE=database`, `QUEUE_CONNECTION=database` | Cache and jobs use the `cache` and `jobs` tables, created by the default migrations |
+| `mailpit` | `MAIL_MAILER=log` | Emails are written to `storage/logs/laravel.log` |
+
+To turn a service back on, add its name to `COMPOSE_PROFILES`, restore the settings and run `./sail up -d --wait`.
 
 </details>
 
@@ -430,7 +470,7 @@ To pin the version of pnpm, Yarn or npm for the whole team, set the `packageMana
 
 ## ⚡ Cache, queues and mail
 
-- **Cache and queues** use Valkey through Laravel's `redis` driver (`CACHE_STORE=redis`, `QUEUE_CONNECTION=redis`). The `phpredis` extension is already in the image.
+- **Cache and queues** use Valkey through Laravel's `redis` driver (`CACHE_STORE=redis`, `QUEUE_CONNECTION=redis`). The `phpredis` extension is already in the image. Without Valkey, switch both to `database` (see [Turn services on and off](#-configuration)).
 - **Queued jobs need a worker.** There is no worker container: jobs wait in Valkey until you run one.
 
   ```bash
@@ -438,7 +478,7 @@ To pin the version of pnpm, Yarn or npm for the whole team, set the `packageMana
   ```
 
 - **Sessions** are stored in the database (`SESSION_DRIVER=database`).
-- **Mail** goes to Mailpit over SMTP. Nothing leaves your machine: open http://localhost:8025 to read every email the app sends.
+- **Mail** goes to Mailpit over SMTP. Nothing leaves your machine: open http://localhost:8025 to read every email the app sends. Without Mailpit, set `MAIL_MAILER=log` and read the emails in `storage/logs/laravel.log`.
 
 ---
 
@@ -596,6 +636,24 @@ The app cannot resolve the `mysql` service: the MySQL container is stopped or de
 ```bash
 ./sail down
 ./sail up -d --wait
+```
+
+</details>
+
+<details>
+<summary><code>getaddrinfo for valkey failed</code> or <code>Connection refused</code> on cache, queue or mail</summary>
+
+The app still points to a service that is off. Either add the service back to `COMPOSE_PROFILES`, or switch the Laravel setting that uses it: `CACHE_STORE=database` and `QUEUE_CONNECTION=database` for Valkey, `MAIL_MAILER=log` for Mailpit. See [Turn services on and off](#-configuration).
+
+</details>
+
+<details>
+<summary>A service I turned off is still running</summary>
+
+`COMPOSE_PROFILES` was changed while the containers were up, so Compose no longer manages that service. Enable its profile just for this command and remove the leftover container:
+
+```bash
+./sail --profile mailpit rm -sf mailpit
 ```
 
 </details>

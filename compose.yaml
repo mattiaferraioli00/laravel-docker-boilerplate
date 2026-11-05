@@ -25,9 +25,14 @@ services:
         networks:
             - sail
         depends_on:
-            - mysql
-            - valkey
-            - mailpit
+            mysql:
+                condition: service_started
+            valkey:
+                condition: service_started
+                required: false
+            mailpit:
+                condition: service_started
+                required: false
         healthcheck:
             test:
                 - CMD
@@ -68,6 +73,8 @@ services:
             timeout: 5s
     valkey:
         image: 'valkey/valkey:${VALKEY_VERSION:-9}-alpine'
+        profiles:
+            - valkey
         ports:
             - '${APP_BIND_ADDRESS:-127.0.0.1}:${FORWARD_VALKEY_PORT:-}:6379'
         volumes:
@@ -83,6 +90,8 @@ services:
             timeout: 5s
     mailpit:
         image: 'axllent/mailpit:${MAILPIT_VERSION:-latest}'
+        profiles:
+            - mailpit
         ports:
             - '${APP_BIND_ADDRESS:-127.0.0.1}:${FORWARD_MAILPIT_DASHBOARD_PORT:-8025}:8025'
         networks:
