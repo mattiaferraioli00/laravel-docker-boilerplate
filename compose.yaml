@@ -16,6 +16,7 @@ services:
             XDEBUG_MODE: '${SAIL_XDEBUG_MODE:-off}'
             XDEBUG_CONFIG: '${SAIL_XDEBUG_CONFIG:-client_host=host.docker.internal}'
             IGNITION_LOCAL_SITES_PATH: '${PWD}'
+            SUPERVISOR_PHP_COMMAND: '/bin/sh -c "HOME=/home/sail composer install --no-interaction --prefer-dist && exec /usr/bin/php -d variables_order=EGPCS /var/www/html/artisan serve --host=0.0.0.0 --port=80"'
         volumes:
             - '.:/var/www/html'
         networks:
@@ -24,6 +25,19 @@ services:
             - mysql
             - valkey
             - mailpit
+        healthcheck:
+            test:
+                - CMD
+                - curl
+                - '-fsS'
+                - '-o'
+                - /dev/null
+                - 'http://localhost/up'
+            interval: 30s
+            timeout: 3s
+            retries: 3
+            start_period: 300s
+            start_interval: 2s
     mysql:
         image: 'mysql:8.4'
         ports:
